@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import MathRenderer from "./MathRenderer";
 import { Question } from "../types/question";
 import { CheckCircle2, XCircle, ChevronDown, ChevronUp, Bookmark, Sparkles } from "lucide-react";
 
@@ -56,6 +57,7 @@ export default function QuestionCard({ question, index }: QuestionCardProps) {
             </span>
           )}
           <button
+            type="button"
             onClick={() => setBookmarked(!bookmarked)}
             className={`p-1.5 rounded-lg border transition ${
               bookmarked ? "bg-amber-50 border-amber-300 text-amber-600" : "border-sage-200 text-sage-400 hover:text-sage-600"
@@ -66,12 +68,12 @@ export default function QuestionCard({ question, index }: QuestionCardProps) {
         </div>
       </div>
 
-      {/* Stem */}
+      {/* Stem with LaTeX rendering */}
       <div className="text-sage-900 font-medium text-base leading-relaxed">
-        {question.questionText}
+        <MathRenderer content={question.questionText} />
       </div>
 
-      {/* Options List */}
+      {/* Options List with LaTeX rendering */}
       <div className="grid grid-cols-1 gap-2.5 pt-2">
         {question.options.map((opt) => {
           const isSelected = selectedOption === opt.id;
@@ -90,6 +92,7 @@ export default function QuestionCard({ question, index }: QuestionCardProps) {
 
           return (
             <button
+              type="button"
               key={opt.id}
               disabled={selectedOption !== null}
               onClick={() => handleSelect(opt.id)}
@@ -98,7 +101,9 @@ export default function QuestionCard({ question, index }: QuestionCardProps) {
               <span className="flex-shrink-0 w-6 h-6 rounded-lg border border-sage-300 bg-sage-50 text-sage-700 text-xs font-semibold flex items-center justify-center">
                 {opt.id}
               </span>
-              <span className="flex-1 text-sm pt-0.5">{opt.text}</span>
+              <span className="flex-1 text-sm pt-0.5">
+                <MathRenderer content={opt.text} />
+              </span>
               {selectedOption && isCorrect && (
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
               )}
@@ -110,10 +115,11 @@ export default function QuestionCard({ question, index }: QuestionCardProps) {
         })}
       </div>
 
-      {/* Explanation Toggle Drawer */}
+      {/* Explanation Toggle Drawer with LaTeX rendering */}
       {selectedOption && (
         <div className="pt-3 border-t border-sage-100">
           <button
+            type="button"
             onClick={() => setShowExplanation(!showExplanation)}
             className="flex items-center gap-1.5 text-xs font-semibold text-sage-600 hover:text-sage-800 transition"
           >
@@ -125,7 +131,7 @@ export default function QuestionCard({ question, index }: QuestionCardProps) {
           {showExplanation && (
             <div className="mt-3 p-4 rounded-xl bg-sage-50 border border-sage-200 text-xs text-sage-800 leading-relaxed">
               <strong className="block font-semibold text-sage-900 mb-1">Concept Clarification:</strong>
-              {question.explanation}
+              <MathRenderer content={question.explanation} />
             </div>
           )}
         </div>
