@@ -1,0 +1,16 @@
+{
+  "name": "Brahma QMS — NEET Question System",
+  "short_name": "Brahma QMS",
+  "description": "High-performance, offline-ready NEET Question Management Platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f7f5",
+  "theme_color": "#4a7c59",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}
