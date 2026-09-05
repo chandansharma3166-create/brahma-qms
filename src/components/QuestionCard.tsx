@@ -14,11 +14,35 @@ export default function QuestionCard({ question, index }: QuestionCardProps) {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
+  const [aiHint, setAiHint] = useState<string | null>(null);
+  const [loadingHint, setLoadingHint] = useState(false);
 
   const handleSelect = (optionId: string) => {
     if (selectedOption) return; // Prevent changing after submission
     setSelectedOption(optionId);
     setShowExplanation(true);
+  };
+
+  const fetchAiHint = async () => {
+    if (aiHint) return;
+    setLoadingHint(true);
+    try {
+      const res = await fetch("/api/ai-hint", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          questionText: question.questionText,
+          subject: question.subject,
+          chapter: question.chapter,
+        }),
+      });
+      const data = await res.json();
+      setAiHint(data.hint || "Review your NCERT formula sheet for this chapter.");
+    } catch {
+      setAiHint("Focus on identifying the core variable asked in the problem.");
+    } finally {
+      setLoadingHint(false);
+    }
   };
 
   const getDifficultyBadge = (diff: string) => {
@@ -114,6 +138,27 @@ export default function QuestionCard({ question, index }: QuestionCardProps) {
           );
         })}
       </div>
+
+      {/* AI Conceptual Hint Drawer (Pre-submission) */}
+      {!selectedOption && (
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={fetchAiHint}
+            disabled={loadingHint}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-sage-600 hover:text-sage-800 transition"
+          >
+            <Sparkles className={`w-3.5 h-3.5 ${loadingHint ? "animate-spin" : "text-sage-500"}`} />
+            <span>{loadingHint ? "Analyzing concept..." : "Need an NCERT hint?"}</span>
+          </button>
+          {aiHint && (
+            <div className="mt-2 p-3 rounded-xl bg-sage-100/60 border border-sage-200 text-xs text-sage-800 leading-relaxed">
+              <strong className="font-semibold text-sage-900 block mb-0.5">Conceptual Hint:</strong>
+              {aiHint}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Explanation Toggle Drawer with LaTeX rendering */}
       {selectedOption && (
