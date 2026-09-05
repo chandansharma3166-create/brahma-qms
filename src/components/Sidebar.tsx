@@ -12,7 +12,8 @@ import {
   Bookmark, 
   Settings,
   Users,
-  Sliders
+  Sliders,
+  ArrowUpDown
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -28,6 +29,7 @@ export default function Sidebar() {
   { label: "Notebook", href: "/notebook", icon: <Bookmark className="w-5 h-5" /> },
   { label: "Community Hub", href: "/community", icon: <Users className="w-5 h-5" /> },
   { label: "Settings", href: "/settings", icon: <Settings className="w-5 h-5" /> },
+  { label: "Data Transfer", href: "/data-transfer", icon: <ArrowUpDown className="w-5 h-5" /> },
 ];
 
   return (
