@@ -1,5 +1,4 @@
-export type Subject = "PHYSICS" | "CHEMISTRY" | "BIOLOGY";
-
+export type Subject = "BIOLOGY" | "PHYSICS" | "CHEMISTRY";
 export type Difficulty = "EASY" | "MEDIUM" | "HARD";
 
 export type QuestionType = 
@@ -18,14 +17,14 @@ export interface Question {
   id: string;
   subject: Subject;
   chapter: string;
-  topic: string;
-  subtopic?: string;
+  topic?: string;
+  difficulty: Difficulty;
   questionText: string;
-  questionType: QuestionType;
   options: Option[];
   explanation: string;
-  difficulty: Difficulty;
-  source?: string;
-  year?: number;
-  tags: string[];
+  exam?: string;
+  isPyq?: boolean;
+  pyqYear?: string;
+  diagram?: string;         // <-- Add this
+  personalNotes?: string;   // <-- Add this
 }
