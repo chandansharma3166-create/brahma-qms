@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import FocusTimer from "./FocusTimer";
 import { 
@@ -13,12 +13,18 @@ import {
   CheckCircle2, 
   Upload, 
   Image as ImageIcon,
-  HelpCircle
+  RotateCcw,
+  Flame,
+  Award,
+  ExternalLink
 } from "lucide-react";
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(3);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   // Form State
   const [subject, setSubject] = useState("BIOLOGY");
@@ -40,6 +46,54 @@ export default function Header() {
 
   const [explanation, setExplanation] = useState("");
   const [personalNotes, setPersonalNotes] = useState("");
+
+  const notifications = [
+    {
+      id: 1,
+      title: "18 Questions Due Today",
+      desc: "Spaced-repetition queue ready for retention review in Biology & Physics.",
+      time: "10m ago",
+      icon: RotateCcw,
+      iconColor: "text-amber-600 bg-amber-50 border-amber-200",
+      link: "/revision",
+    },
+    {
+      id: 2,
+      title: "12-Day Streak Active!",
+      desc: "Great consistency! Keep solving to unlock the Level 3 Aspirant badge.",
+      time: "2h ago",
+      icon: Flame,
+      iconColor: "text-rose-600 bg-rose-50 border-rose-200",
+      link: "/analytics",
+    },
+    {
+      id: 3,
+      title: "Mock Test 04 Available",
+      desc: "High-yield NCERT pattern mock test is ready to attempt in the Mock Arena.",
+      time: "Yesterday",
+      icon: Award,
+      iconColor: "text-emerald-600 bg-emerald-50 border-emerald-200",
+      link: "/mock",
+    },
+  ];
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setShowNotifications(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleToggleNotifications = () => {
+    setShowNotifications((prev) => !prev);
+    if (!showNotifications) {
+      setUnreadCount(0);
+    }
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -87,7 +141,6 @@ export default function Header() {
     setTimeout(() => {
       setIsSaved(false);
       setIsOpen(false);
-      // Reset form
       setChapter("");
       setTopic("");
       setQuestionText("");
@@ -140,14 +193,78 @@ export default function Header() {
               <span className="hidden sm:inline">Add Question</span>
             </button>
 
-            <button
-              type="button"
-              className="p-2 rounded-xl border border-sage-200 text-sage-600 hover:bg-sage-50 transition relative"
-              title="Notifications"
-            >
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-            </button>
+            {/* Notification Bell with Menu */}
+            <div className="relative" ref={notifRef}>
+              <button
+                type="button"
+                onClick={handleToggleNotifications}
+                className="p-2 rounded-xl border border-sage-200 text-sage-600 hover:bg-sage-50 transition relative cursor-pointer"
+                title="Notifications"
+              >
+                <Bell className="w-4 h-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full ring-2 ring-white" />
+                )}
+              </button>
+
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl border border-sage-200 bg-white shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                  <div className="flex items-center justify-between border-b border-sage-100 px-4 py-3 bg-sage-50/60">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-sage-900">Notifications</span>
+                      <span className="px-2 py-0.5 text-[10px] font-bold bg-sage-200 text-sage-700 rounded-full">
+                        Updates
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowNotifications(false)}
+                      className="text-sage-400 hover:text-sage-700 p-0.5 rounded-lg"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="divide-y divide-sage-100 max-h-[360px] overflow-y-auto">
+                    {notifications.map((n) => {
+                      const IconComponent = n.icon;
+                      return (
+                        <Link
+                          key={n.id}
+                          href={n.link}
+                          onClick={() => setShowNotifications(false)}
+                          className="flex items-start gap-3 p-3.5 hover:bg-sage-50/70 transition block"
+                        >
+                          <div className={`p-2 rounded-xl border flex-shrink-0 mt-0.5 ${n.iconColor}`}>
+                            <IconComponent className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1">
+                              <h4 className="text-xs font-bold text-sage-900 truncate">{n.title}</h4>
+                              <span className="text-[10px] text-sage-400 whitespace-nowrap">{n.time}</span>
+                            </div>
+                            <p className="text-[11px] text-sage-600 mt-0.5 leading-snug line-clamp-2">
+                              {n.desc}
+                            </p>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+
+                  <div className="border-t border-sage-100 p-2.5 bg-sage-50/50 text-center">
+                    <Link
+                      href="/revision"
+                      onClick={() => setShowNotifications(false)}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-sage-700 hover:text-sage-900"
+                    >
+                      <span>Go to Revision Center</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="w-8 h-8 rounded-xl bg-sage-700 text-white font-bold text-xs flex items-center justify-center">
               CS
@@ -318,7 +435,7 @@ export default function Header() {
                   )}
                 </div>
 
-                {/* 4 Options Grid with Correct Answer Picker */}
+                {/* 4 Options Grid */}
                 <div className="space-y-2 border-t border-sage-100 pt-3">
                   <div className="flex items-center justify-between">
                     <label className="text-[11px] font-bold text-sage-900">
