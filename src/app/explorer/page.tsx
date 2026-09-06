@@ -1,17 +1,31 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { SEED_QUESTIONS } from "../../data/seedQuestions";
 import QuestionCard from "../../components/QuestionCard";
 import { Search, Layers } from "lucide-react";
 import { Subject, Difficulty, Question } from "../../types/question";
 
-export default function QuestionExplorerPage() {
+function QuestionExplorerContent() {
+  const searchParams = useSearchParams();
+  const subjectParam = searchParams.get("subject")?.toUpperCase();
+
   const [allQuestions, setAllQuestions] = useState<Question[]>(SEED_QUESTIONS);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSubject, setSelectedSubject] = useState<Subject | "ALL">("ALL");
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty | "ALL">("ALL");
 
+  // Synchronize state with URL query parameter (?subject=BIOLOGY, etc.)
+  useEffect(() => {
+    if (subjectParam && ["BIOLOGY", "PHYSICS", "CHEMISTRY"].includes(subjectParam)) {
+      setSelectedSubject(subjectParam as Subject);
+    } else {
+      setSelectedSubject("ALL");
+    }
+  }, [subjectParam]);
+
+  // Load custom questions from localStorage and merge
   useEffect(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("brahma_notebook_entries");
@@ -30,8 +44,14 @@ export default function QuestionExplorerPage() {
 
   const filteredQuestions = useMemo(() => {
     return allQuestions.filter((q) => {
-      const matchSubject = selectedSubject === "ALL" || q.subject === selectedSubject;
-      const matchDiff = selectedDifficulty === "ALL" || q.difficulty === selectedDifficulty;
+      const matchSubject =
+        selectedSubject === "ALL" ||
+        q.subject.toUpperCase() === selectedSubject.toUpperCase();
+
+      const matchDiff =
+        selectedDifficulty === "ALL" ||
+        q.difficulty.toUpperCase() === selectedDifficulty.toUpperCase();
+
       const matchSearch =
         searchQuery === "" ||
         q.questionText.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -95,7 +115,7 @@ export default function QuestionExplorerPage() {
       <div className="flex items-center justify-between text-xs text-sage-600 px-1">
         <span className="flex items-center gap-1.5 font-medium">
           <Layers className="w-3.5 h-3.5 text-sage-500" />
-          Showing {filteredQuestions.length} Questions
+          Showing {filteredQuestions.length} Questions {selectedSubject !== "ALL" && `in ${selectedSubject}`}
         </span>
       </div>
 
@@ -113,5 +133,13 @@ export default function QuestionExplorerPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function QuestionExplorerPage() {
+  return (
+    <Suspense fallback={<div className="text-xs text-sage-500 p-6">Loading questions...</div>}>
+      <QuestionExplorerContent />
+    </Suspense>
   );
 }
