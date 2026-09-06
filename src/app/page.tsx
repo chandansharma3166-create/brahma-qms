@@ -16,100 +16,137 @@ import {
 } from "lucide-react";
 
 interface MockRecord {
+  id?: string;
+  date?: string;
+  subject?: string;
   score: number;
   accuracy: number;
   total: number;
   correct: number;
   incorrect: number;
+  timeSpentSeconds?: number;
+}
+
+interface SubjectStat {
+  accuracy: number;
+  mastery: number;
+  attempted: number;
 }
 
 export default function DashboardPage() {
   const router = useRouter();
 
-  const [stats, setStats] = useState({
-    accuracy: 76.4,
-    questionsSolved: 3540,
-    avgSpeed: "54s",
-    dueRevision: 18,
-    isDynamic: false,
+  // Top Metrics
+  const [overallAccuracy, setOverallAccuracy] = useState<number>(76.4);
+  const [totalSolved, setTotalSolved] = useState<number>(3540);
+  const [avgSpeed, setAvgSpeed] = useState<string>("54s");
+  const [revisionDue, setRevisionDue] = useState<number>(18);
+  const [isDynamic, setIsDynamic] = useState<boolean>(false);
+
+  // Per-Subject Metrics
+  const [subjectStats, setSubjectStats] = useState<Record<string, SubjectStat>>({
+    BIOLOGY: { accuracy: 84, mastery: 72, attempted: 1420 },
+    PHYSICS: { accuracy: 68, mastery: 54, attempted: 980 },
+    CHEMISTRY: { accuracy: 76, mastery: 65, attempted: 1140 },
   });
 
   useEffect(() => {
-    async function loadStats() {
-      let dynamicAccuracy = 76.4;
-      let totalSolved = 0;
-      let totalAttempts = 0;
-      let totalCorrect = 0;
-      let notebookCount = 0;
-      let hasData = false;
+    if (typeof window === "undefined") return;
 
-      // 1. Read local mock test records
-      if (typeof window !== "undefined") {
-        const mockRaw = localStorage.getItem("brahma_mock_history");
-        if (mockRaw) {
-          try {
-            const history: MockRecord[] = JSON.parse(mockRaw);
-            if (Array.isArray(history) && history.length > 0) {
-              hasData = true;
-              history.forEach((h) => {
-                totalSolved += h.total || 0;
-                totalCorrect += h.correct || 0;
-                totalAttempts += (h.correct || 0) + (h.incorrect || 0);
-              });
-              if (totalAttempts > 0) {
-                dynamicAccuracy = Math.round((totalCorrect / totalAttempts) * 100 * 10) / 10;
-              }
-            }
-          } catch (e) {
-            console.error("Local mock history parse error", e);
-          }
-        }
+    // 1. Parse Mock Test History
+    const mockRaw = localStorage.getItem("brahma_mock_history");
+    const notebookRaw = localStorage.getItem("brahma_notebook_entries");
 
-        const localNotebook = localStorage.getItem("brahma_notebook_entries");
-        if (localNotebook) {
-          try {
-            const parsed = JSON.parse(localNotebook);
-            if (Array.isArray(parsed)) notebookCount = parsed.length;
-          } catch (e) {
-            console.error("Local notebook parse error", e);
-          }
-        }
-      }
+    let history: MockRecord[] = [];
+    let notebookCount = 0;
 
-      // 2. Fetch live count from Google Sheet endpoint
-      const apiUrl = process.env.NEXT_PUBLIC_GOOGLE_SHEET_API_URL;
-      if (apiUrl) {
-        try {
-          const res = await fetch(apiUrl);
-          if (res.ok) {
-            const sheetQuestions = await res.json();
-            if (Array.isArray(sheetQuestions) && sheetQuestions.length > 0) {
-              hasData = true;
-              notebookCount += sheetQuestions.length;
-              totalSolved += sheetQuestions.length;
-            }
-          }
-        } catch (e) {
-          console.warn("Failed to reach Google Sheet API, falling back to local data", e);
-        }
-      }
-
-      if (hasData) {
-        setStats({
-          accuracy: totalAttempts > 0 ? dynamicAccuracy : 76.4,
-          questionsSolved: totalSolved > 0 ? totalSolved : 3540,
-          avgSpeed: "52s",
-          dueRevision: notebookCount > 0 ? notebookCount : 18,
-          isDynamic: true,
-        });
+    if (mockRaw) {
+      try {
+        const parsed = JSON.parse(mockRaw);
+        if (Array.isArray(parsed)) history = parsed;
+      } catch (e) {
+        console.error("Failed to parse mock history", e);
       }
     }
 
-    loadStats();
+    if (notebookRaw) {
+      try {
+        const parsedNotebook = JSON.parse(notebookRaw);
+        if (Array.isArray(parsedNotebook)) notebookCount = parsedNotebook.length;
+      } catch (e) {
+        console.error("Failed to parse notebook", e);
+      }
+    }
+
+    // 2. Aggregate Data if Tests Have Been Attempted
+    if (history.length > 0) {
+      setIsDynamic(true);
+
+      let totalCorrectAll = 0;
+      let totalQuestionsAll = 0;
+      let totalAttemptsAll = 0;
+      let totalSecondsAll = 0;
+
+      const subjectBreakdown: Record<string, { correct: number; attempted: number; totalQ: number }> = {
+        BIOLOGY: { correct: 0, attempted: 0, totalQ: 0 },
+        PHYSICS: { correct: 0, attempted: 0, totalQ: 0 },
+        CHEMISTRY: { correct: 0, attempted: 0, totalQ: 0 },
+      };
+
+      history.forEach((test) => {
+        const qCount = test.total || 0;
+        const correct = test.correct || 0;
+        const attempted = (test.correct || 0) + (test.incorrect || 0);
+
+        totalCorrectAll += correct;
+        totalAttemptsAll += attempted;
+        totalQuestionsAll += qCount;
+        totalSecondsAll += test.timeSpentSeconds || attempted * 54;
+
+        const sub = (test.subject || "BIOLOGY").toUpperCase();
+        if (subjectBreakdown[sub]) {
+          subjectBreakdown[sub].correct += correct;
+          subjectBreakdown[sub].attempted += attempted;
+          subjectBreakdown[sub].totalQ += qCount;
+        }
+      });
+
+      // Update Top Metrics
+      if (totalAttemptsAll > 0) {
+        setOverallAccuracy(Math.round((totalCorrectAll / totalAttemptsAll) * 1000) / 10);
+        setTotalSolved(totalQuestionsAll);
+        const calculatedSpeed = Math.round(totalSecondsAll / totalAttemptsAll);
+        setAvgSpeed(`${calculatedSpeed > 0 ? calculatedSpeed : 54}s`);
+      }
+
+      if (notebookCount > 0) {
+        setRevisionDue(notebookCount);
+      }
+
+      // Update Subject Cards
+      const newSubStats = { ...subjectStats };
+      (["BIOLOGY", "PHYSICS", "CHEMISTRY"] as const).forEach((sub) => {
+        const data = subjectBreakdown[sub];
+        if (data.attempted > 0) {
+          const acc = Math.round((data.correct / data.attempted) * 100);
+          // Mastery is weighted by accuracy and volume
+          const mastery = Math.min(100, Math.round(acc * 0.85 + Math.min(15, data.attempted * 0.5)));
+          newSubStats[sub] = {
+            accuracy: acc,
+            mastery: mastery,
+            attempted: data.attempted,
+          };
+        }
+      });
+      setSubjectStats(newSubStats);
+    } else if (notebookCount > 0) {
+      setRevisionDue(notebookCount);
+    }
   }, []);
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
+      
       {/* Welcome Banner */}
       <div className="bg-white border border-sage-200 rounded-3xl p-6 sm:p-8 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-2">
@@ -125,7 +162,7 @@ export default function DashboardPage() {
             Welcome back, Aspirant
           </h1>
           <p className="text-xs sm:text-sm text-sage-600 max-w-xl">
-            You have <strong className="text-sage-900 font-bold">{stats.dueRevision} questions</strong> due for spaced revision today. Keep the memory retention high.
+            You have <strong className="text-sage-900 font-bold">{revisionDue} questions</strong> due for spaced revision today. Keep the memory retention high.
           </p>
         </div>
 
@@ -157,9 +194,9 @@ export default function DashboardPage() {
             <span>Overall Accuracy</span>
             <Target className="w-4 h-4 text-sage-400" />
           </div>
-          <div className="text-2xl font-bold text-sage-900">{stats.accuracy}%</div>
+          <div className="text-2xl font-bold text-sage-900">{overallAccuracy}%</div>
           <span className="text-[11px] text-emerald-600 font-semibold block">
-            {stats.isDynamic ? "Calculated from live attempts" : "+2.1% from last week"}
+            {isDynamic ? "Live test performance" : "+2.1% from last week"}
           </span>
         </div>
 
@@ -168,9 +205,9 @@ export default function DashboardPage() {
             <span>Questions Solved</span>
             <CheckCircle2 className="w-4 h-4 text-sage-400" />
           </div>
-          <div className="text-2xl font-bold text-sage-900">{stats.questionsSolved.toLocaleString()}</div>
+          <div className="text-2xl font-bold text-sage-900">{totalSolved.toLocaleString()}</div>
           <span className="text-[11px] text-sage-500 font-medium block">
-            {stats.isDynamic ? "Tracked in active session" : "Goal: 5,000 before test series"}
+            {isDynamic ? "Tracked in mock arena" : "Goal: 5,000 before test series"}
           </span>
         </div>
 
@@ -179,7 +216,7 @@ export default function DashboardPage() {
             <span>Avg Speed / Question</span>
             <Zap className="w-4 h-4 text-sage-400" />
           </div>
-          <div className="text-2xl font-bold text-sage-900">{stats.avgSpeed}</div>
+          <div className="text-2xl font-bold text-sage-900">{avgSpeed}</div>
           <span className="text-[11px] text-sage-500 font-medium block">
             Target: &lt; 50s for Biology
           </span>
@@ -190,14 +227,14 @@ export default function DashboardPage() {
             <span>Revision Queue</span>
             <RotateCcw className="w-4 h-4 text-amber-500" />
           </div>
-          <div className="text-2xl font-bold text-amber-600">{stats.dueRevision} Due</div>
+          <div className="text-2xl font-bold text-amber-600">{revisionDue} Due</div>
           <span className="text-[11px] text-rose-600 font-medium block">
-            {stats.isDynamic ? "Synced live with notebook" : "4 High-yield mistakes"}
+            {isDynamic ? "From notebook & mistakes" : "4 High-yield mistakes"}
           </span>
         </div>
       </div>
 
-      {/* Subject Domain Cards */}
+      {/* Dynamic NEET Subjects Cards */}
       <div className="space-y-3">
         <div>
           <h2 className="text-base font-bold text-sage-900">NEET Subjects</h2>
@@ -205,6 +242,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          
           {/* Biology */}
           <div className="bg-white border border-sage-200 rounded-2xl p-5 shadow-sm flex flex-col justify-between space-y-4">
             <div>
@@ -213,7 +251,7 @@ export default function DashboardPage() {
                   <BookOpen className="w-4 h-4" />
                 </span>
                 <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
-                  84% Acc.
+                  {subjectStats.BIOLOGY.accuracy}% Acc.
                 </span>
               </div>
               <h3 className="text-sm font-bold text-sage-900">Biology</h3>
@@ -222,16 +260,19 @@ export default function DashboardPage() {
               <div className="mt-4 space-y-1.5">
                 <div className="flex justify-between text-[11px] font-semibold text-sage-600">
                   <span>Topic Mastery</span>
-                  <span>72%</span>
+                  <span>{subjectStats.BIOLOGY.mastery}%</span>
                 </div>
                 <div className="w-full h-1.5 bg-sage-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: "72%" }} />
+                  <div 
+                    className="h-full bg-emerald-500 rounded-full transition-all duration-500" 
+                    style={{ width: `${subjectStats.BIOLOGY.mastery}%` }} 
+                  />
                 </div>
               </div>
             </div>
 
             <Link
-              href="/explorer"
+              href="/explorer?subject=BIOLOGY"
               className="inline-flex items-center justify-between pt-3 border-t border-sage-100 text-xs font-bold text-sage-700 hover:text-sage-900 transition"
             >
               <span>Enter Practice</span>
@@ -247,7 +288,7 @@ export default function DashboardPage() {
                   <Atom className="w-4 h-4" />
                 </span>
                 <span className="text-xs font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-lg border border-teal-200">
-                  68% Acc.
+                  {subjectStats.PHYSICS.accuracy}% Acc.
                 </span>
               </div>
               <h3 className="text-sm font-bold text-sage-900">Physics</h3>
@@ -256,16 +297,19 @@ export default function DashboardPage() {
               <div className="mt-4 space-y-1.5">
                 <div className="flex justify-between text-[11px] font-semibold text-sage-600">
                   <span>Topic Mastery</span>
-                  <span>54%</span>
+                  <span>{subjectStats.PHYSICS.mastery}%</span>
                 </div>
                 <div className="w-full h-1.5 bg-sage-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-teal-600 rounded-full" style={{ width: "54%" }} />
+                  <div 
+                    className="h-full bg-teal-600 rounded-full transition-all duration-500" 
+                    style={{ width: `${subjectStats.PHYSICS.mastery}%` }} 
+                  />
                 </div>
               </div>
             </div>
 
             <Link
-              href="/explorer"
+              href="/explorer?subject=PHYSICS"
               className="inline-flex items-center justify-between pt-3 border-t border-sage-100 text-xs font-bold text-sage-700 hover:text-sage-900 transition"
             >
               <span>Enter Practice</span>
@@ -281,7 +325,7 @@ export default function DashboardPage() {
                   <FlaskConical className="w-4 h-4" />
                 </span>
                 <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200">
-                  76% Acc.
+                  {subjectStats.CHEMISTRY.accuracy}% Acc.
                 </span>
               </div>
               <h3 className="text-sm font-bold text-sage-900">Chemistry</h3>
@@ -290,24 +334,29 @@ export default function DashboardPage() {
               <div className="mt-4 space-y-1.5">
                 <div className="flex justify-between text-[11px] font-semibold text-sage-600">
                   <span>Topic Mastery</span>
-                  <span>65%</span>
+                  <span>{subjectStats.CHEMISTRY.mastery}%</span>
                 </div>
                 <div className="w-full h-1.5 bg-sage-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-sage-500 rounded-full" style={{ width: "65%" }} />
+                  <div 
+                    className="h-full bg-sage-500 rounded-full transition-all duration-500" 
+                    style={{ width: `${subjectStats.CHEMISTRY.mastery}%` }} 
+                  />
                 </div>
               </div>
             </div>
 
             <Link
-              href="/explorer"
+              href="/explorer?subject=CHEMISTRY"
               className="inline-flex items-center justify-between pt-3 border-t border-sage-100 text-xs font-bold text-sage-700 hover:text-sage-900 transition"
             >
               <span>Enter Practice</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
+
         </div>
       </div>
+
     </div>
   );
 }
