@@ -1,21 +1,23 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
   RotateCcw, 
-  Sparkles, 
   Target, 
   CheckCircle2, 
   Zap, 
-  TrendingUp, 
   ArrowRight,
   BookOpen,
   Atom,
-  FlaskConical
+  FlaskConical,
+  Sliders
 } from "lucide-react";
 
 export default function DashboardPage() {
+  const router = useRouter();
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       
@@ -38,21 +40,24 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Working Action Buttons */}
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <Link
-            href="/revision"
-            className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-sage-500 hover:bg-sage-600 text-white text-xs font-bold shadow-xs transition"
+        {/* Action Buttons */}
+        <div className="flex items-center gap-3 w-full md:w-auto z-10 relative">
+          <button
+            type="button"
+            onClick={() => router.push("/revision")}
+            className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-sage-500 hover:bg-sage-600 text-white text-xs font-bold shadow-xs transition cursor-pointer"
           >
             <RotateCcw className="w-4 h-4" />
             <span>Start Revision</span>
-          </Link>
-          <Link
-            href="/test-builder"
-            className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-sage-300 hover:bg-sage-50 text-sage-800 text-xs font-bold transition"
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push("/builder")}
+            className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-sage-300 hover:bg-sage-50 text-sage-800 text-xs font-bold transition cursor-pointer"
           >
+            <Sliders className="w-4 h-4" />
             <span>Test Builder</span>
-          </Link>
+          </button>
         </div>
       </div>
 
@@ -138,7 +143,7 @@ export default function DashboardPage() {
             </div>
 
             <Link
-              href="/explorer?subject=BIOLOGY"
+              href="/explorer"
               className="inline-flex items-center justify-between pt-3 border-t border-sage-100 text-xs font-bold text-sage-700 hover:text-sage-900 transition"
             >
               <span>Enter Practice</span>
@@ -172,7 +177,7 @@ export default function DashboardPage() {
             </div>
 
             <Link
-              href="/explorer?subject=PHYSICS"
+              href="/explorer"
               className="inline-flex items-center justify-between pt-3 border-t border-sage-100 text-xs font-bold text-sage-700 hover:text-sage-900 transition"
             >
               <span>Enter Practice</span>
@@ -206,7 +211,7 @@ export default function DashboardPage() {
             </div>
 
             <Link
-              href="/explorer?subject=CHEMISTRY"
+              href="/explorer"
               className="inline-flex items-center justify-between pt-3 border-t border-sage-100 text-xs font-bold text-sage-700 hover:text-sage-900 transition"
             >
               <span>Enter Practice</span>
