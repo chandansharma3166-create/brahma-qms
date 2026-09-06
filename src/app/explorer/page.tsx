@@ -1,29 +1,46 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { SEED_QUESTIONS } from "../../data/seedQuestions";
 import QuestionCard from "../../components/QuestionCard";
 import { Search, Layers } from "lucide-react";
 import { Subject, Difficulty, Question } from "../../types/question";
 
 export default function QuestionExplorerPage() {
+  const [allQuestions, setAllQuestions] = useState<Question[]>(SEED_QUESTIONS);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSubject, setSelectedSubject] = useState<Subject | "ALL">("ALL");
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty | "ALL">("ALL");
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("brahma_notebook_entries");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setAllQuestions([...parsed, ...SEED_QUESTIONS]);
+          }
+        } catch (e) {
+          console.error("Failed to parse custom questions:", e);
+        }
+      }
+    }
+  }, []);
+
   const filteredQuestions = useMemo(() => {
-    return SEED_QUESTIONS.filter((q) => {
+    return allQuestions.filter((q) => {
       const matchSubject = selectedSubject === "ALL" || q.subject === selectedSubject;
       const matchDiff = selectedDifficulty === "ALL" || q.difficulty === selectedDifficulty;
       const matchSearch =
         searchQuery === "" ||
         q.questionText.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        q.chapter.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        q.topic.toLowerCase().includes(searchQuery.toLowerCase());
+        (q.chapter && q.chapter.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (q.topic && q.topic.toLowerCase().includes(searchQuery.toLowerCase()));
 
       return matchSubject && matchDiff && matchSearch;
     });
-  }, [searchQuery, selectedSubject, selectedDifficulty]);
+  }, [allQuestions, searchQuery, selectedSubject, selectedDifficulty]);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -91,7 +108,7 @@ export default function QuestionExplorerPage() {
           </div>
         ) : (
           filteredQuestions.map((q, idx) => (
-            <QuestionCard key={q.id} question={q} index={idx} />
+            <QuestionCard key={q.id || idx} question={q} index={idx} />
           ))
         )}
       </div>
