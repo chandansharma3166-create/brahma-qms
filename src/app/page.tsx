@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
@@ -42,6 +42,7 @@ export default function DashboardPage() {
   const [avgSpeed, setAvgSpeed] = useState<string>("54s");
   const [revisionDue, setRevisionDue] = useState<number>(18);
   const [isDynamic, setIsDynamic] = useState<boolean>(false);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
   // Per-Subject Metrics
   const [subjectStats, setSubjectStats] = useState<Record<string, SubjectStat>>({
@@ -50,10 +51,11 @@ export default function DashboardPage() {
     CHEMISTRY: { accuracy: 76, mastery: 65, attempted: 1140 },
   });
 
-  useEffect(() => {
+  const refreshDashboardData = useCallback(() => {
     if (typeof window === "undefined") return;
 
-    // 1. Parse Mock Test History
+    setIsSyncing(true);
+
     const mockRaw = localStorage.getItem("brahma_mock_history");
     const notebookRaw = localStorage.getItem("brahma_notebook_entries");
 
@@ -78,7 +80,9 @@ export default function DashboardPage() {
       }
     }
 
-    // 2. Aggregate Data if Tests Have Been Attempted
+    // Always keep revision count strictly synced with notebook entries length
+    setRevisionDue(notebookCount);
+
     if (history.length > 0) {
       setIsDynamic(true);
 
@@ -111,7 +115,6 @@ export default function DashboardPage() {
         }
       });
 
-      // Update Top Metrics
       if (totalAttemptsAll > 0) {
         setOverallAccuracy(Math.round((totalCorrectAll / totalAttemptsAll) * 1000) / 10);
         setTotalSolved(totalQuestionsAll);
@@ -119,17 +122,11 @@ export default function DashboardPage() {
         setAvgSpeed(`${calculatedSpeed > 0 ? calculatedSpeed : 54}s`);
       }
 
-      if (notebookCount > 0) {
-        setRevisionDue(notebookCount);
-      }
-
-      // Update Subject Cards
       const newSubStats = { ...subjectStats };
       (["BIOLOGY", "PHYSICS", "CHEMISTRY"] as const).forEach((sub) => {
         const data = subjectBreakdown[sub];
         if (data.attempted > 0) {
           const acc = Math.round((data.correct / data.attempted) * 100);
-          // Mastery is weighted by accuracy and volume
           const mastery = Math.min(100, Math.round(acc * 0.85 + Math.min(15, data.attempted * 0.5)));
           newSubStats[sub] = {
             accuracy: acc,
@@ -139,10 +136,18 @@ export default function DashboardPage() {
         }
       });
       setSubjectStats(newSubStats);
-    } else if (notebookCount > 0) {
-      setRevisionDue(notebookCount);
+    } else {
+      if (notebookCount > 0) {
+        setIsDynamic(true);
+      }
     }
-  }, []);
+
+    setTimeout(() => setIsSyncing(false), 300);
+  }, [subjectStats]);
+
+  useEffect(() => {
+    refreshDashboardData();
+  }, [refreshDashboardData]);
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -222,14 +227,28 @@ export default function DashboardPage() {
           </span>
         </div>
 
-        <div className="bg-white border border-sage-200 rounded-2xl p-5 shadow-sm space-y-1">
+        {/* Interactive Revision Queue Card with Working Retry Button */}
+        <div 
+          onClick={() => router.push("/revision")}
+          className="bg-white border border-sage-200 rounded-2xl p-5 shadow-sm space-y-1 cursor-pointer hover:border-amber-300 transition group"
+        >
           <div className="flex items-center justify-between text-xs text-sage-500 font-medium">
             <span>Revision Queue</span>
-            <RotateCcw className="w-4 h-4 text-amber-500" />
+            <button
+              type="button"
+              title="Sync / Refresh Revision Queue"
+              onClick={(e) => {
+                e.stopPropagation();
+                refreshDashboardData();
+              }}
+              className="p-1 rounded-lg hover:bg-amber-50 text-amber-500 transition cursor-pointer"
+            >
+              <RotateCcw className={`w-4 h-4 ${isSyncing ? "animate-spin text-amber-600" : "group-hover:rotate-45 transition-transform"}`} />
+            </button>
           </div>
           <div className="text-2xl font-bold text-amber-600">{revisionDue} Due</div>
           <span className="text-[11px] text-rose-600 font-medium block">
-            {isDynamic ? "From notebook & mistakes" : "4 High-yield mistakes"}
+            {revisionDue > 0 ? "Pending memory retention" : "All caught up today!"}
           </span>
         </div>
       </div>

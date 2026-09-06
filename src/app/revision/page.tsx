@@ -8,7 +8,8 @@ import {
   ArrowRight, 
   Sparkles, 
   BookOpen, 
-  Home 
+  Home,
+  Trash2
 } from "lucide-react";
 import { SEED_QUESTIONS } from "../../data/seedQuestions";
 import { Question } from "../../types/question";
@@ -20,11 +21,9 @@ export default function RevisionCenterPage() {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
-  const [stats, setStats] = useState({ correct: 0, reviewed: 0 });
 
-  // Load questions safely on client mount
-  useEffect(() => {
-    setMounted(true);
+  // Sync questions from localStorage
+  const loadQueue = () => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("brahma_notebook_entries");
       if (stored) {
@@ -38,12 +37,16 @@ export default function RevisionCenterPage() {
           console.error("Failed to parse notebook queue", e);
         }
       }
-      // Fallback to initial practice set if empty
+      // Fallback if notebook is empty
       setQueue(SEED_QUESTIONS.slice(0, 3));
     }
+  };
+
+  useEffect(() => {
+    setMounted(true);
+    loadQueue();
   }, []);
 
-  // Avoid hydration mismatch before client mount
   if (!mounted) {
     return (
       <div className="max-w-3xl mx-auto py-12 text-center text-xs text-sage-500">
@@ -62,21 +65,12 @@ export default function RevisionCenterPage() {
   const handleConfirmAnswer = () => {
     if (!selectedOption || !currentQ) return;
     setIsAnswered(true);
-
-    const isCorrect = currentQ.options?.find(
-      (opt) => (opt.id === selectedOption || opt.text === selectedOption) && opt.isCorrect
-    );
-
-    setStats((prev) => ({
-      reviewed: prev.reviewed + 1,
-      correct: isCorrect ? prev.correct + 1 : prev.correct,
-    }));
   };
 
-  const handleNext = () => {
+  const removeFromQueueAndProceed = () => {
     if (!currentQ) return;
 
-    // Remove the current reviewed question from brahma_notebook_entries immediately
+    // 1. Remove from localStorage
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("brahma_notebook_entries");
       if (stored) {
@@ -85,11 +79,12 @@ export default function RevisionCenterPage() {
           const updated = parsed.filter((q) => q.id !== currentQ.id);
           localStorage.setItem("brahma_notebook_entries", JSON.stringify(updated));
         } catch (e) {
-          console.error("Failed to update notebook queue", e);
+          console.error("Error updating queue", e);
         }
       }
     }
 
+    // 2. Advance to next or complete
     if (currentIndex + 1 < queue.length) {
       setCurrentIndex((prev) => prev + 1);
       setSelectedOption(null);
@@ -99,55 +94,24 @@ export default function RevisionCenterPage() {
     }
   };
 
-  if (queue.length === 0) {
-    return (
-      <div className="max-w-2xl mx-auto py-16 text-center space-y-4">
-        <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto border border-emerald-200">
-          <CheckCircle2 className="w-6 h-6" />
-        </div>
-        <h2 className="text-lg font-bold text-sage-900">Revision Queue All Clear!</h2>
-        <p className="text-xs text-sage-600">No pending spaced repetition questions due today.</p>
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-sage-600 hover:bg-sage-700 text-white rounded-xl text-xs font-semibold"
-        >
-          <Home className="w-4 h-4" />
-          <span>Back to Dashboard</span>
-        </Link>
-      </div>
-    );
-  }
-
-  if (isCompleted) {
+  if (queue.length === 0 || isCompleted) {
     return (
       <div className="max-w-2xl mx-auto py-16 text-center space-y-4 bg-white border border-sage-200 rounded-3xl p-8">
         <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto border border-emerald-200">
           <Sparkles className="w-7 h-7" />
         </div>
-        <h2 className="text-xl font-bold text-sage-900">Session Finished!</h2>
+        <h2 className="text-xl font-bold text-sage-900">Revision Deck Cleared!</h2>
         <p className="text-xs text-sage-600">
-          Reviewed <strong className="text-sage-900">{stats.reviewed}</strong> questions with{" "}
-          <strong className="text-emerald-600">{stats.correct} correct</strong> answers.
+          All pending questions have been reviewed and removed from your queue.
         </p>
         <div className="flex justify-center gap-3 pt-4">
           <Link
             href="/"
-            className="px-5 py-2.5 bg-sage-600 hover:bg-sage-700 text-white rounded-xl text-xs font-bold transition"
+            className="px-5 py-2.5 bg-sage-600 hover:bg-sage-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2"
           >
-            Go to Dashboard
+            <Home className="w-4 h-4" />
+            <span>Return to Dashboard</span>
           </Link>
-          <button
-            type="button"
-            onClick={() => {
-              setCurrentIndex(0);
-              setSelectedOption(null);
-              setIsAnswered(false);
-              setIsCompleted(false);
-            }}
-            className="px-5 py-2.5 border border-sage-300 text-sage-700 hover:bg-sage-50 rounded-xl text-xs font-bold transition cursor-pointer"
-          >
-            Review Again
-          </button>
         </div>
       </div>
     );
@@ -155,7 +119,7 @@ export default function RevisionCenterPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-5">
-      {/* Header Bar */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-sage-900">Spaced Revision Deck</h1>
@@ -191,18 +155,6 @@ export default function RevisionCenterPage() {
             {currentQ?.questionText}
           </h2>
         </div>
-
-        {/* Optional Diagram */}
-        {currentQ?.diagram && (
-          <div className="p-3 bg-sage-50 border border-sage-200 rounded-xl flex justify-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={currentQ.diagram}
-              alt="Question Diagram"
-              className="max-h-48 object-contain rounded-lg"
-            />
-          </div>
-        )}
 
         {/* Options */}
         <div className="space-y-2.5">
@@ -246,9 +198,9 @@ export default function RevisionCenterPage() {
           })}
         </div>
 
-        {/* Explanation revealed on submit */}
+        {/* Explanation */}
         {isAnswered && (
-          <div className="p-4 rounded-xl bg-sage-50 border border-sage-200 space-y-2 text-xs animate-in fade-in duration-200">
+          <div className="p-4 rounded-xl bg-sage-50 border border-sage-200 space-y-2 text-xs">
             <div className="font-bold text-sage-900 flex items-center gap-1.5">
               <BookOpen className="w-3.5 h-3.5 text-sage-600" />
               <span>Explanation & NCERT Reference:</span>
@@ -263,8 +215,17 @@ export default function RevisionCenterPage() {
           </div>
         )}
 
-        {/* Actions */}
-        <div className="flex justify-end pt-3 border-t border-sage-100">
+        {/* Action Buttons */}
+        <div className="flex items-center justify-between pt-3 border-t border-sage-100">
+          <button
+            type="button"
+            onClick={removeFromQueueAndProceed}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-semibold transition cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Mark Mastered & Remove</span>
+          </button>
+
           {!isAnswered ? (
             <button
               type="button"
@@ -277,10 +238,10 @@ export default function RevisionCenterPage() {
           ) : (
             <button
               type="button"
-              onClick={handleNext}
+              onClick={removeFromQueueAndProceed}
               className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition cursor-pointer"
             >
-              <span>{currentIndex + 1 < queue.length ? "Next Problem" : "Finish Session"}</span>
+              <span>{currentIndex + 1 < queue.length ? "Next Problem" : "Finish Deck"}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           )}
