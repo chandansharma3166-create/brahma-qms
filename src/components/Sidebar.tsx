@@ -22,7 +22,7 @@ export default function Sidebar() {
   const navItems = [
     { label: "Dashboard", href: "/", icon: <Compass className="w-5 h-5" /> },
     { label: "Question Explorer", href: "/explorer", icon: <BookOpen className="w-5 h-5" /> },
-    { label: "Test Builder", href: "/test-builder", icon: <Sliders className="w-5 h-5" /> },
+    { label: "Test Builder", href: "/builder", icon: <Sliders className="w-5 h-5" /> },
     { label: "Mock Arena", href: "/mock", icon: <FileCheck2 className="w-5 h-5" /> },
     { label: "Revision Center", href: "/revision", icon: <RotateCcw className="w-5 h-5" /> },
     { label: "Analytics", href: "/analytics", icon: <BarChart3 className="w-5 h-5" /> },
