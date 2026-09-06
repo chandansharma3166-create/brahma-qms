@@ -19,18 +19,18 @@ import {
 export default function Sidebar() {
   const pathname = usePathname();
 
- const navItems = [
-  { label: "Dashboard", href: "/", icon: <Compass className="w-5 h-5" /> },
-  { label: "Question Explorer", href: "/explorer", icon: <BookOpen className="w-5 h-5" /> },
-  { label: "Test Builder", href: "/builder", icon: <Sliders className="w-5 h-5" /> },
-  { label: "Mock Arena", href: "/mock", icon: <FileCheck2 className="w-5 h-5" /> },
-  { label: "Revision Center", href: "/revision", icon: <RotateCcw className="w-5 h-5" /> },
-  { label: "Analytics", href: "/analytics", icon: <BarChart3 className="w-5 h-5" /> },
-  { label: "Notebook", href: "/notebook", icon: <Bookmark className="w-5 h-5" /> },
-  { label: "Community Hub", href: "/community", icon: <Users className="w-5 h-5" /> },
-  { label: "Settings", href: "/settings", icon: <Settings className="w-5 h-5" /> },
-  { label: "Data Transfer", href: "/data-transfer", icon: <ArrowUpDown className="w-5 h-5" /> },
-];
+  const navItems = [
+    { label: "Dashboard", href: "/", icon: <Compass className="w-5 h-5" /> },
+    { label: "Question Explorer", href: "/explorer", icon: <BookOpen className="w-5 h-5" /> },
+    { label: "Test Builder", href: "/test-builder", icon: <Sliders className="w-5 h-5" /> },
+    { label: "Mock Arena", href: "/mock", icon: <FileCheck2 className="w-5 h-5" /> },
+    { label: "Revision Center", href: "/revision", icon: <RotateCcw className="w-5 h-5" /> },
+    { label: "Analytics", href: "/analytics", icon: <BarChart3 className="w-5 h-5" /> },
+    { label: "Notebook", href: "/notebook", icon: <Bookmark className="w-5 h-5" /> },
+    { label: "Community Hub", href: "/community", icon: <Users className="w-5 h-5" /> },
+    { label: "Settings", href: "/settings", icon: <Settings className="w-5 h-5" /> },
+    { label: "Data Transfer", href: "/data-transfer", icon: <ArrowUpDown className="w-5 h-5" /> },
+  ];
 
   return (
     <aside className="w-64 bg-white border-r border-sage-200 min-h-screen flex flex-col justify-between p-4 flex-shrink-0">
